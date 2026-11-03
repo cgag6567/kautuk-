@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>क्विज़ होस्ट</title>
 <link rel="stylesheet" href="style.css">
-<script src="questions.js"></script></head>
+<script src="questions.js"></script><script src="sound.js"></script></head>
 <body><main id="app">लोड हो रहा है…</main>
 <script>
 const $=s=>document.querySelector(s),app=$("#app");
@@ -43,6 +43,7 @@ async function start(){
   localStorage.setItem("hostpw",pw);
   H.pin=j.pin;H.hk=j.hk;await setMeta({ph:"lobby",names:[]});lobby();lobbyPoll()}
 function lobby(){
+  Snd.music("lobby");
   const url=location.origin+"/?pin="+H.pin;
   app.innerHTML=`<div class="card"><div class="ctr mut">मोबाइल पर खोलें: <b>${esc(location.host)}</b> और PIN डालें</div><div class="pin">${H.pin}</div>
   <div class="ctr"><small class="mut">सीधा लिंक: ${esc(url)}</small></div></div>
@@ -60,26 +61,26 @@ async function nextQ(){
   const img=q[4]&&String(q[4]).length<1500?q[4]:"";
   H.q={c:q[0],q:q[1],o:o.map(x=>x[0]),img};
   const j=await setMeta({ph:"q",i:H.i,n:H.qs.length,L:H.L,c:q[0],q:q[1],o:H.q.o,img});
-  H.t0=H.meta.t0;H.answered=0;qView();qLoop()}
+  H.t0=H.meta.t0;H.answered=0;Snd.start();Snd.music("q");qView();qLoop()}
 function qView(){
   app.innerHTML=`<div class="bar"><span>${esc(H.q.c)} · प्रश्न ${H.i+1}/${H.qs.length}</span><span id="ac">उत्तर: 0/${H.names.length}</span></div><div class="t"><i id="tb"></i></div>
   <div class="card">${pic(H.q.img)}<div class="big" style="font-size:1.5rem">${esc(H.q.q)}</div></div>
   <div class="o">${H.q.o.map((t,i)=>`<div class="c${i}">${"▲◆●■"[i]} ${esc(t)}</div>`).join("")}</div>
   <button id="skip" style="margin-top:12px;width:100%">अभी परिणाम दिखाएँ</button>`;
   $("#skip").onclick=()=>{clearTimeout(tmr);clearInterval(tick);reveal()};
-  const tb=$("#tb");clearInterval(tick);tick=setInterval(()=>{const left=(H.t0+H.L*1000)-srv();tb.style.width=Math.max(0,left/(H.L*1000)*100)+"%"},100)}
+  const tb=$("#tb");clearInterval(tick);let ls=99;tick=setInterval(()=>{const left=(H.t0+H.L*1000)-srv();tb.style.width=Math.max(0,left/(H.L*1000)*100)+"%";const s=Math.ceil(left/1000);if(s<=5&&s>0&&s!==ls){ls=s;Snd.tick()}},100)}
 async function qLoop(){
   const j=await api("players",{pin:H.pin,hk:H.hk});
   if(j.ps){const a=j.ps.filter(p=>p.a[H.i]!=null).length;const e=$("#ac");if(e)e.textContent=`उत्तर: ${a}/${j.ps.length}`;
     if((j.ps.length&&a>=j.ps.length)||srv()>H.t0+H.L*1000+2000){clearInterval(tick);return reveal()}}
   tmr=setTimeout(qLoop,1200)}
 async function reveal(){
-  clearTimeout(tmr);clearInterval(tick);
+  clearTimeout(tmr);clearInterval(tick);Snd.stop();
   const j=await api("players",{pin:H.pin,hk:H.hk});const ps=j.ps||[];
   const L=H.L*1000;
   const b=ps.map(p=>{const a=p.a[H.i],ok=a&&a.c===H.k;const d=ok?Math.round(1000*(1-Math.min(a.t,L)/(2*L))):0;
     H.sc[p.pid]=(H.sc[p.pid]||0)+d;H.nm[p.pid]=p.n;return{p:p.pid,n:p.n,s:H.sc[p.pid],d,c:a?a.c:null}}).sort((x,y)=>y.s-x.s);
-  H.b=b;await setMeta({ph:"rev",i:H.i,n:H.qs.length,q:H.q.q,o:H.q.o,k:H.k,b});
+  H.b=b;Snd.reveal();await setMeta({ph:"rev",i:H.i,n:H.qs.length,q:H.q.q,o:H.q.o,k:H.k,b});
   const mx=Math.max(1,b[0]?b[0].s:1),last=H.i+1>=H.qs.length;
   app.innerHTML=`<div class="card"><div class="big">${esc(H.q.q)}</div></div>
   <div class="o">${H.q.o.map((t,i)=>`<div class="c${i} ${i===H.k?"good":"dim"}">${"▲◆●■"[i]} ${esc(t)}</div>`).join("")}</div>
@@ -87,7 +88,7 @@ async function reveal(){
   <button class="p" id="nx">${last?"🏆 अंतिम परिणाम":"अगला प्रश्न →"}</button>`;
   $("#nx").onclick=nextQ}
 async function end(){
-  const b=H.b||[];await setMeta({ph:"end",b});
+  const b=H.b||[];Snd.stop();Snd.win();await setMeta({ph:"end",b});
   app.innerHTML=`<div class="card ctr"><div style="font-size:3.5rem">🏆</div><h2>विजेता: ${esc(b[0]?b[0].n:"-")}</h2></div>
   <div class="card">${b.slice(0,10).map((x,i)=>`<div class="row"><span>${["🥇","🥈","🥉"][i]||(i+1)+"."} ${esc(x.n)}</span><span>${x.s}</span></div>`).join("")}</div>
   <button class="p" id="nw">नया गेम (वर्तमान गेम बंद करें)</button>`;

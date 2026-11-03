@@ -2,12 +2,12 @@
 <html lang="hi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>लाइव क्विज़ — PIN डालकर जुड़ें</title>
-<link rel="stylesheet" href="style.css"></head>
+<link rel="stylesheet" href="style.css"><script src="sound.js"></script></head>
 <body><main id="app"></main>
 <script>
 const $=s=>document.querySelector(s),app=$("#app"),KEY="quizp";
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let S=null,off=0,meta=null,ver=-1,my={qi:-1,c:null},timer,tick;
+let S=null,off=0,meta=null,ver=-1,my={qi:-1,c:null},timer,tick,sl=-1,se=-1;
 try{S=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
 async function api(a,o,post){
   const t1=Date.now();let r;
@@ -44,7 +44,7 @@ function render(){
     app.innerHTML=`<div class="card ctr"><div style="font-size:3rem">✅</div><div class="big">${esc(S.n)}, आप जुड़ गए!</div><p>होस्ट के खेल शुरू करने का इंतज़ार करें…</p></div>
     <div class="card"><b>जुड़े खिलाड़ी (${(m.names||[]).length})</b><div class="chips">${(m.names||[]).map(x=>`<span>${esc(x)}</span>`).join("")}</div></div>`}
   else if(m.ph==="q"){
-    if(my.qi!==m.i){my={qi:m.i,c:null}}
+    if(my.qi!==m.i){my={qi:m.i,c:null};Snd.fx("start")}
     app.innerHTML=`<div class="bar"><span>${esc(m.c)} · प्रश्न ${m.i+1}/${m.n}</span><span>${esc(S.n)}</span></div><div class="t"><i id="tb"></i></div>
     <div class="card">${pic(m.img)}<div class="big">${esc(m.q)}</div></div>
     <div class="o">${m.o.map((t,i)=>`<button class="c${i} ${my.c!=null&&my.c!==i?"dim":""}" data-i="${i}" ${my.c!=null?"disabled":""}>${"▲◆●■"[i]} ${esc(t)}</button>`).join("")}</div>
@@ -53,6 +53,7 @@ function render(){
     const tb=$("#tb");tick=setInterval(()=>{const left=(m.t0+m.L*1000)-(Date.now()+off);tb.style.width=Math.max(0,left/(m.L*1000)*100)+"%"},100)}
   else if(m.ph==="rev"){
     const b=m.b||[],r=b.findIndex(x=>x.p===S.pid),me=b[r]||{s:0,d:0,c:null},ok=me.c===m.k;
+    if(sl!==m.v){sl=m.v;Snd.fx(me.c!=null&&ok?"correct":"wrong")}
     app.innerHTML=`<div class="card ctr"><div style="font-size:3.5rem">${me.c==null?"⏰":ok?"✅":"❌"}</div>
     <div class="big">${me.c==null?"समय समाप्त":ok?"सही! +"+me.d+" अंक":"गलत"}</div>
     <p>सही उत्तर: <b>${esc(m.o[m.k])}</b></p>
@@ -60,12 +61,13 @@ function render(){
     <p class="ctr mut">अगले प्रश्न का इंतज़ार…</p>`}
   else if(m.ph==="end"){
     const b=m.b||[],r=b.findIndex(x=>x.p===S.pid),me=b[r]||{s:0};
+    if(se!==m.v){se=m.v;Snd.fx(r>=0&&r<3?"win":"correct")}
     app.innerHTML=`<div class="card ctr"><div style="font-size:3.5rem">${r===0?"🏆":r>=0&&r<3?"🥈":"🎉"}</div><div class="big">आपकी रैंक: ${r<0?"-":r+1}/${b.length}</div><p>कुल स्कोर: <b>${me.s}</b></p></div>
     <div class="card"><b>शीर्ष खिलाड़ी</b>${b.slice(0,5).map((x,i)=>`<div class="row ${x.p===S.pid?"me":""}"><span>${i+1}. ${esc(x.n)}</span><span>${x.s}</span></div>`).join("")}</div>
     <button class="p" id="again">नया गेम खेलें</button>`;
     $("#again").onclick=()=>{const n=S.n;localStorage.removeItem(KEY);S={n};clearTimeout(timer);history.replaceState(null,"","/");home()}}}
 async function send(i){
-  if(my.c!=null||!meta||meta.ph!=="q")return;my.c=i;render();
+  if(my.c!=null||!meta||meta.ph!=="q")return;my.c=i;Snd.fx("tap");render();
   const j=await api("answer",{pin:S.pin,pid:S.pid,qi:meta.i,c:i},true);
   if(j.e==="closed"){const e=$("#st");if(e)e.textContent="समय समाप्त — उत्तर दर्ज नहीं हुआ"}}
 if(S&&S.pid&&S.pin){poll()}else home();
