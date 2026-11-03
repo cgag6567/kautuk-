@@ -18,7 +18,7 @@ async function api(a,o,post){
   j._s=r.status;if(j.now)off=j.now-(t1+Date.now())/2;return j}
 const srv=()=>Date.now()+off;
 async function setMeta(m){const j=await api("set",{pin:H.pin,hk:H.hk,meta:m},true);if(j.meta)H.meta=j.meta;return j}
-function pic(i){return i?`<div class="pic">${/^(https?:|data:|img\/)/.test(i)?`<img src="${esc(i)}" alt="चित्र">`:esc(i)}</div>`:""}
+function pic(i){return i?`<div class="pic">${/^(https?:|data:|img\/)/.test(i)?`<img src="${esc(i)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:esc(i)}</div>`:""}
 fetch("photo-questions.json").then(r=>r.json()).then(p=>{QB=QB.concat(p);menu()}).catch(()=>menu());
 function menu(){
   const cats=[...new Set(QB.map(q=>q[0]))];
