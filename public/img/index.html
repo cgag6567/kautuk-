@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>लाइव क्विज़ — PIN डालकर जुड़ें</title>
+<link rel="stylesheet" href="style.css"></head>
+<body><main id="app"></main>
+<script>
+const $=s=>document.querySelector(s),app=$("#app"),KEY="quizp";
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let S=null,off=0,meta=null,ver=-1,my={qi:-1,c:null},timer,tick;
+try{S=JSON.parse(localStorage.getItem(KEY)||"null")}catch(e){}
+async function api(a,o,post){
+  const t1=Date.now();let r;
+  try{r=post?await fetch("/api",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(Object.assign({a},o))})
+    :await fetch("/api?"+new URLSearchParams(Object.assign({a},o)))}catch(e){return{_s:0}}
+  let j={};try{j=await r.json()}catch(e){}
+  j._s=r.status;if(j.now)off=j.now-(t1+Date.now())/2;return j}
+function home(msg){
+  clearTimeout(timer);clearInterval(tick);
+  const q=new URLSearchParams(location.search).get("pin")||"";
+  app.innerHTML=`<h1>🧠 लाइव क्विज़</h1><div class="card"><b>गेम में जुड़ें</b>
+  <input id="pin" placeholder="गेम PIN (4 अंक)" inputmode="numeric" maxlength="4" value="${esc(q)}">
+  <input id="nm" placeholder="आपका नाम" maxlength="14" value="${esc((S&&S.n)||"")}">
+  <p class="err" id="er">${msg?esc(msg):""}</p><button class="p" id="go">जुड़ें</button></div>
+  <p class="mut ctr">PIN होस्ट की बड़ी स्क्रीन पर दिखता है</p>`;
+  $("#go").onclick=join}
+async function join(){
+  const pin=$("#pin").value.replace(/\D/g,""),n=$("#nm").value.trim();
+  if(pin.length!==4||!n){$("#er").textContent="4 अंकों का PIN और अपना नाम डालें";return}
+  $("#go").disabled=true;
+  const j=await api("join",{pin,n,pid:S&&S.pin===pin?S.pid:""},true);
+  if(j.pid){S={pin,pid:j.pid,n:j.n};localStorage.setItem(KEY,JSON.stringify(S));ver=-1;my={qi:-1,c:null};poll()}
+  else{$("#go").disabled=false;$("#er").textContent=j._s===404?"ऐसा कोई गेम नहीं मिला":j.e==="started"?"यह गेम शुरू हो चुका है":j.e==="full"?"गेम भर चुका है":"जुड़ नहीं सके, फिर कोशिश करें"}}
+async function poll(){
+  clearTimeout(timer);
+  const j=await api("state",{pin:S.pin,v:ver});
+  if(j._s===404){localStorage.removeItem(KEY);const n=S.n;S={n};return home("यह गेम समाप्त हो चुका है")}
+  if(j.meta){meta=j.meta;ver=meta.v;render()}
+  timer=setTimeout(poll,meta&&meta.ph==="q"?900:1500)}
+function pic(i){return i?`<div class="pic">${/^(https?:|data:|img\/)/.test(i)?`<img src="${esc(i)}" alt="चित्र">`:esc(i)}</div>`:""}
+function render(){
+  clearInterval(tick);const m=meta;
+  if(m.ph==="lobby"){
+    app.innerHTML=`<div class="card ctr"><div style="font-size:3rem">✅</div><div class="big">${esc(S.n)}, आप जुड़ गए!</div><p>होस्ट के खेल शुरू करने का इंतज़ार करें…</p></div>
+    <div class="card"><b>जुड़े खिलाड़ी (${(m.names||[]).length})</b><div class="chips">${(m.names||[]).map(x=>`<span>${esc(x)}</span>`).join("")}</div></div>`}
+  else if(m.ph==="q"){
+    if(my.qi!==m.i){my={qi:m.i,c:null}}
+    app.innerHTML=`<div class="bar"><span>${esc(m.c)} · प्रश्न ${m.i+1}/${m.n}</span><span>${esc(S.n)}</span></div><div class="t"><i id="tb"></i></div>
+    <div class="card">${pic(m.img)}<div class="big">${esc(m.q)}</div></div>
+    <div class="o">${m.o.map((t,i)=>`<button class="c${i} ${my.c!=null&&my.c!==i?"dim":""}" data-i="${i}" ${my.c!=null?"disabled":""}>${"▲◆●■"[i]} ${esc(t)}</button>`).join("")}</div>
+    <p class="ctr mut" id="st">${my.c!=null?"उत्तर भेज दिया ✓ — बाकी का इंतज़ार…":""}</p>`;
+    app.querySelectorAll(".o button").forEach(b=>b.onclick=()=>send(+b.dataset.i));
+    const tb=$("#tb");tick=setInterval(()=>{const left=(m.t0+m.L*1000)-(Date.now()+off);tb.style.width=Math.max(0,left/(m.L*1000)*100)+"%"},100)}
+  else if(m.ph==="rev"){
+    const b=m.b||[],r=b.findIndex(x=>x.p===S.pid),me=b[r]||{s:0,d:0,c:null},ok=me.c===m.k;
+    app.innerHTML=`<div class="card ctr"><div style="font-size:3.5rem">${me.c==null?"⏰":ok?"✅":"❌"}</div>
+    <div class="big">${me.c==null?"समय समाप्त":ok?"सही! +"+me.d+" अंक":"गलत"}</div>
+    <p>सही उत्तर: <b>${esc(m.o[m.k])}</b></p>
+    <p>आपका स्कोर: <b>${me.s}</b> · रैंक: <b>${r<0?"-":r+1}</b>/${b.length}</p></div>
+    <p class="ctr mut">अगले प्रश्न का इंतज़ार…</p>`}
+  else if(m.ph==="end"){
+    const b=m.b||[],r=b.findIndex(x=>x.p===S.pid),me=b[r]||{s:0};
+    app.innerHTML=`<div class="card ctr"><div style="font-size:3.5rem">${r===0?"🏆":r>=0&&r<3?"🥈":"🎉"}</div><div class="big">आपकी रैंक: ${r<0?"-":r+1}/${b.length}</div><p>कुल स्कोर: <b>${me.s}</b></p></div>
+    <div class="card"><b>शीर्ष खिलाड़ी</b>${b.slice(0,5).map((x,i)=>`<div class="row ${x.p===S.pid?"me":""}"><span>${i+1}. ${esc(x.n)}</span><span>${x.s}</span></div>`).join("")}</div>
+    <button class="p" id="again">नया गेम खेलें</button>`;
+    $("#again").onclick=()=>{const n=S.n;localStorage.removeItem(KEY);S={n};clearTimeout(timer);history.replaceState(null,"","/");home()}}}
+async function send(i){
+  if(my.c!=null||!meta||meta.ph!=="q")return;my.c=i;render();
+  const j=await api("answer",{pin:S.pin,pid:S.pid,qi:meta.i,c:i},true);
+  if(j.e==="closed"){const e=$("#st");if(e)e.textContent="समय समाप्त — उत्तर दर्ज नहीं हुआ"}}
+if(S&&S.pid&&S.pin){poll()}else home();
+</script></body></html>
