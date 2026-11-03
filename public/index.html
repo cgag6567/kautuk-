@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="hi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>लाइव क्विज़ — PIN डालकर जुड़ें</title>
+<title>कौतुक — क्विज़ खेल</title>
 <link rel="stylesheet" href="style.css"><script src="sound.js"></script></head>
 <body><main id="app"></main>
 <script>
@@ -15,15 +15,22 @@ async function api(a,o,post){
     :await fetch("/api?"+new URLSearchParams(Object.assign({a},o)))}catch(e){return{_s:0}}
   let j={};try{j=await r.json()}catch(e){}
   j._s=r.status;if(j.now)off=j.now-(t1+Date.now())/2;return j}
-function home(msg){
+function landing(){
+  clearTimeout(timer);clearInterval(tick);
+  app.innerHTML=`<div class="ctr" style="padding-top:18px"><div style="font-size:3.5rem">🧠</div><h1>कौतुक</h1><p class="mut">दोस्तों के साथ लाइव क्विज़ खेलें</p></div>
+  <a href="host.html" style="display:block;text-align:center;text-decoration:none;background:var(--ac);color:#fff;border-radius:14px;padding:18px;font-weight:700;font-size:1.15rem;margin:14px 0">🖥 गेम होस्ट करें<br><small style="font-weight:400">बड़ी स्क्रीन पर प्रश्न दिखाएँ और PIN पाएँ</small></a>
+  <button id="jn" style="width:100%;padding:18px;font-weight:700;font-size:1.15rem;border-radius:14px">📱 PIN डालकर खेलें<br><small class="mut" style="font-weight:400">होस्ट ने जो PIN दिया है वह डालें</small></button>`;
+  document.getElementById("jn").onclick=()=>home("",true)}
+function home(msg,form){
   clearTimeout(timer);clearInterval(tick);
   const q=new URLSearchParams(location.search).get("pin")||"";
-  app.innerHTML=`<h1>🧠 लाइव क्विज़</h1><div class="card"><b>गेम में जुड़ें</b>
+  if(!form&&!q&&!msg)return landing();
+  app.innerHTML=`<p style="margin:4px 0"><a href="#" id="bk" style="color:var(--mut)">← वापस</a></p><h1>📱 गेम में जुड़ें</h1><div class="card">
   <input id="pin" placeholder="गेम PIN (4 अंक)" inputmode="numeric" maxlength="4" value="${esc(q)}">
   <input id="nm" placeholder="आपका नाम" maxlength="14" value="${esc((S&&S.n)||"")}">
   <p class="err" id="er">${msg?esc(msg):""}</p><button class="p" id="go">जुड़ें</button></div>
   <p class="mut ctr">PIN होस्ट की बड़ी स्क्रीन पर दिखता है</p>`;
-  $("#go").onclick=join}
+  $("#go").onclick=join;$("#bk").onclick=e=>{e.preventDefault();history.replaceState(null,"","/");landing()}}
 async function join(){
   const pin=$("#pin").value.replace(/\D/g,""),n=$("#nm").value.trim();
   if(pin.length!==4||!n){$("#er").textContent="4 अंकों का PIN और अपना नाम डालें";return}
