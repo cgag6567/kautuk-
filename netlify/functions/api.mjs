@@ -35,8 +35,6 @@ export default async (req) => {
 
   try {
     if (a === "create") {
-      const need = process.env.HOST_PASSWORD; // Netlify में सेट करें; खाली हो तो कोई भी गेम बना सकता है
-      if (need && String(b.pw || "") !== need) return J({ e: "pw" }, 403);
       for (let i = 0; i < 15; i++) {
         const p = String(1000 + Math.floor(Math.random() * 9000));
         const m = await get(`g${p}/meta`);
