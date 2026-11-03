@@ -26,18 +26,21 @@ function menu(){
   <div class="card"><b>श्रेणी</b><select id="cat"><option value="">🎲 सभी श्रेणियाँ मिलाकर</option>${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select>
   <b>प्रश्नों की संख्या</b><select id="nq"><option>10</option><option>15</option><option>20</option><option>30</option></select>
   <b>प्रति प्रश्न समय</b><select id="sec"><option value="15">15 सेकंड</option><option value="20" selected>20 सेकंड</option><option value="30">30 सेकंड</option></select>
+  <b>होस्ट पासवर्ड</b><input type="password" id="pw" placeholder="Netlify में रखा पासवर्ड" autocomplete="current-password">
   <button class="p" id="go" style="margin-top:10px">🚀 गेम बनाएँ</button></div>
   <div class="card"><b>अपने प्रश्न जोड़ें (JSON)</b><br><small class="mut">प्रारूप: ["श्रेणी","प्रश्न",["क","ख","ग","घ"],सही_क्रमांक,"चित्र"]</small>
   <input type="file" id="f" accept=".json"></div>`;
   $("#f").onchange=e=>{const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;QB=QB.concat(d);menu();alert(d.length+" प्रश्न जुड़े")}catch(x){alert("फ़ाइल का प्रारूप सही नहीं")}};r.readAsText(e.target.files[0])};
+  $("#pw").value=localStorage.getItem("hostpw")||"";
   $("#go").onclick=start}
 async function start(){
   const cat=$("#cat").value,n=+$("#nq").value;H.L=+$("#sec").value;
   const pool=QB.filter(q=>!cat||q[0]===cat);if(!pool.length)return alert("इस श्रेणी में प्रश्न नहीं हैं");
   H.qs=shuf(pool).slice(0,n);H.sc={};H.nm={};H.names=[];H.i=-1;
   $("#go").disabled=true;
-  const j=await api("create",{},true);
-  if(!j.pin){$("#go").disabled=false;return alert("गेम नहीं बन सका — Netlify फ़ंक्शन/Blobs जाँचें")}
+  const pw=$("#pw").value;const j=await api("create",{pw},true);
+  if(!j.pin){$("#go").disabled=false;return alert(j.e==="pw"?"पासवर्ड गलत है":"गेम नहीं बन सका — Netlify फ़ंक्शन/Blobs जाँचें")}
+  localStorage.setItem("hostpw",pw);
   H.pin=j.pin;H.hk=j.hk;await setMeta({ph:"lobby",names:[]});lobby();lobbyPoll()}
 function lobby(){
   const url=location.origin+"/?pin="+H.pin;
