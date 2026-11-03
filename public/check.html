@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>फोटो जाँच</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.it{background:var(--card);border:2px solid var(--bd);border-radius:12px;padding:8px;font-size:.9rem}
+.it.ok{border-color:var(--ok)}
+.it img{width:100%;height:150px;object-fit:cover;border-radius:8px;display:block;background:var(--bd)}
+.it label{display:flex;gap:8px;align-items:center;margin-top:6px;font-weight:600;cursor:pointer}
+.it input{width:20px;height:20px;margin:0}
+.top{position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5}
+.top button{width:auto;display:inline-block;margin:3px 3px 3px 0;padding:8px 12px}
+.ans{color:var(--ok);font-weight:600}
+</style></head>
+<body><main style="max-width:1100px">
+<h1>📷 फोटो जाँच</h1>
+<p class="mut">हर प्रश्न की फोटो देखें। फोटो प्रश्न/उत्तर से मेल खाती हो तो नीचे वाला डिब्बा ✔ करें। फिर ऊपर के बटन से सही वाले डाउनलोड करें। (आपकी प्रगति इसी ब्राउज़र में सेव रहती है।)</p>
+<div class="top"><span id="cnt"></span><br>
+<button onclick="all_(true)">सब ✔</button><button onclick="all_(false)">सब हटाएँ</button>
+<button class="p" style="width:auto" onclick="dl(true)">⬇ मेल खाने वाले (फोटो सहित)</button>
+<button onclick="dl(false)">⬇ बाकी (बिना फोटो)</button></div>
+<div class="g" id="g">लोड हो रहा है…</div>
+<script>
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let Q=[],M={};
+try{M=JSON.parse(localStorage.getItem("chk")||"{}")}catch(e){}
+fetch("photo-questions.json?"+Date.now()).then(r=>r.json()).then(d=>{Q=d;draw()});
+function draw(){
+  document.getElementById("g").innerHTML=Q.map((q,i)=>`<div class="it ${M[i]?"ok":""}" id="c${i}">
+  <img src="${esc(q[4])}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.alt='फोटो नहीं खुली'">
+  <div><b>${i+1}.</b> ${esc(q[1])}</div><div class="ans">उत्तर: ${esc(q[2][q[3]])}</div>
+  <label><input type="checkbox" ${M[i]?"checked":""} onchange="mk(${i},this.checked)"> फोटो मेल खाती है</label></div>`).join("");
+  cnt()}
+function cnt(){const n=Object.values(M).filter(Boolean).length;document.getElementById("cnt").textContent=`✔ ${n} / ${Q.length} मेल खाती हैं`}
+function mk(i,v){M[i]=v;document.getElementById("c"+i).classList.toggle("ok",v);localStorage.setItem("chk",JSON.stringify(M));cnt()}
+function all_(v){Q.forEach((q,i)=>M[i]=v);localStorage.setItem("chk",JSON.stringify(M));draw()}
+function dl(withPhoto){
+  const out=Q.filter((q,i)=>!!M[i]===withPhoto).map(q=>withPhoto?q:["सामान्य ज्ञान",q[1].replace(/^चित्र में दिख रही /,"यह ").replace(/^इस /,""),q[2],q[3]]);
+  if(!out.length)return alert("कोई प्रश्न नहीं चुना गया");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:"application/json"}));
+  a.download=withPhoto?"photo-questions.json":"bina-photo-prashn.json";a.click()}
+</script></main></body></html>
