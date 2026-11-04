@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="hi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>क्विज़ होस्ट</title>
+<title>कौतुक — होस्ट</title>
 <link rel="stylesheet" href="style.css">
-<script src="questions.js"></script><script src="sound.js"></script></head>
+<script src="sound.js"></script></head>
 <body><main id="app">लोड हो रहा है…</main>
 <script>
 const $=s=>document.querySelector(s),app=$("#app");
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const shuf=a=>a.map(x=>[Math.random(),x]).sort((a,b)=>a[0]-b[0]).map(x=>x[1]);
-let QB=(window.QB||[]).slice(),H={sc:{},nm:{},names:[],i:-1},off=0,tmr,tick;
+let H={names:[]},off=0,tmr,tick,ex=[],C={};
 async function api(a,o,post){
   const t1=Date.now();let r;
   try{r=post?await fetch("/api",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(Object.assign({a},o))})
@@ -17,28 +16,28 @@ async function api(a,o,post){
   let j={};try{j=await r.json()}catch(e){}
   j._s=r.status;if(j.now)off=j.now-(t1+Date.now())/2;return j}
 const srv=()=>Date.now()+off;
-async function setMeta(m){const j=await api("set",{pin:H.pin,hk:H.hk,meta:m},true);if(j.meta)H.meta=j.meta;return j}
 function pic(i){return i?`<div class="pic">${/^(https?:|data:|img\/)/.test(i)?`<img src="${esc(i)}" alt="" referrerpolicy="no-referrer" onerror="this.style.display='none'">`:esc(i)}</div>`:""}
-fetch("photo-questions.json").then(r=>r.json()).then(p=>{QB=QB.concat(p);menu()}).catch(()=>menu());
+api("cats").then(j=>{C=j.cats||{};menu()});
 function menu(){
-  const cats=[...new Set(QB.map(q=>q[0]))];
-  app.innerHTML=`<p style="margin:4px 0"><a href="/" style="color:var(--mut)">← मुख्य पृष्ठ</a></p><h1>🧠 कौतुक — होस्ट</h1><small class="mut">कुल प्रश्न: ${QB.length}</small>
-  <div class="card"><b>श्रेणी</b><select id="cat"><option value="">🎲 सभी श्रेणियाँ मिलाकर</option>${cats.map(c=>`<option>${esc(c)}</option>`).join("")}</select>
+  const all=Object.assign({},C);let tot=0;
+  ex.forEach(q=>{all[q[0]]=(all[q[0]]||0)+1});
+  Object.values(all).forEach(n=>tot+=n);
+  app.innerHTML=`<p style="margin:4px 0"><a href="/" style="color:var(--mut)">← मुख्य पृष्ठ</a></p><h1>🧠 कौतुक — होस्ट</h1><small class="mut">कुल प्रश्न: ${tot}</small>
+  <div class="card"><b>श्रेणी</b><select id="cat"><option value="">🎲 सभी श्रेणियाँ मिलाकर</option>${Object.keys(all).map(c=>`<option value="${esc(c)}">${esc(c)} (${all[c]})</option>`).join("")}</select>
   <b>प्रश्नों की संख्या</b><select id="nq"><option>10</option><option>15</option><option>20</option><option>30</option></select>
   <b>प्रति प्रश्न समय</b><select id="sec"><option value="15">15 सेकंड</option><option value="20" selected>20 सेकंड</option><option value="30">30 सेकंड</option></select>
   <button class="p" id="go" style="margin-top:10px">🚀 गेम बनाएँ</button></div>
-  <div class="card"><b>अपने प्रश्न जोड़ें (JSON)</b><br><small class="mut">प्रारूप: ["श्रेणी","प्रश्न",["क","ख","ग","घ"],सही_क्रमांक,"चित्र"]</small>
-  <input type="file" id="f" accept=".json"></div>`;
-  $("#f").onchange=e=>{const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;QB=QB.concat(d);menu();alert(d.length+" प्रश्न जुड़े")}catch(x){alert("फ़ाइल का प्रारूप सही नहीं")}};r.readAsText(e.target.files[0])};
+  <div class="card"><b>अपने प्रश्न जोड़ें (JSON)</b><br><small class="mut">इस गेम के लिए ही जुड़ते हैं। प्रारूप: ["श्रेणी","प्रश्न",["क","ख","ग","घ"],सही_क्रमांक,"चित्र"]</small>
+  <input type="file" id="f" accept=".json">${ex.length?`<p class="mut">जुड़े अपने प्रश्न: ${ex.length}</p>`:""}</div>
+  <p class="mut ctr"><small>प्रश्नों के उत्तर सर्वर पर रहते हैं; होस्ट को भी उत्तर समय पूरा होने पर ही दिखते हैं।</small></p>`;
+  $("#f").onchange=e=>{const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;ex=ex.concat(d);menu();alert(d.length+" प्रश्न जुड़े")}catch(x){alert("फ़ाइल का प्रारूप सही नहीं")}};r.readAsText(e.target.files[0])};
   $("#go").onclick=start}
 async function start(){
   const cat=$("#cat").value,n=+$("#nq").value;H.L=+$("#sec").value;
-  const pool=QB.filter(q=>!cat||q[0]===cat);if(!pool.length)return alert("इस श्रेणी में प्रश्न नहीं हैं");
-  H.qs=shuf(pool).slice(0,n);H.sc={};H.nm={};H.names=[];H.i=-1;
   $("#go").disabled=true;
-  const j=await api("create",{},true);
-  if(!j.pin){$("#go").disabled=false;return alert("गेम नहीं बन सका — Netlify फ़ंक्शन/Blobs जाँचें")}
-  H.pin=j.pin;H.hk=j.hk;await setMeta({ph:"lobby",names:[]});lobby();lobbyPoll()}
+  const j=await api("create",{cat,n,L:H.L,extra:ex},true);
+  if(!j.pin){$("#go").disabled=false;return alert(j.e==="empty"?"इस श्रेणी में प्रश्न नहीं हैं":"गेम नहीं बन सका — Netlify फ़ंक्शन/Blobs जाँचें")}
+  H.pin=j.pin;H.hk=j.hk;H.names=[];lobby();lobbyPoll()}
 function lobby(){
   Snd.music("lobby");
   const url=location.origin+"/?pin="+H.pin;
@@ -50,42 +49,40 @@ function lobby(){
 function showNames(){const nl=$("#nl");if(!nl)return;nl.innerHTML=H.names.map(x=>`<span>${esc(x)}</span>`).join("");$("#cnt").textContent=H.names.length;$("#st").disabled=!H.names.length}
 async function lobbyPoll(){
   const j=await api("players",{pin:H.pin,hk:H.hk});
-  if(j.ps){const nm=j.ps.map(p=>p.n).sort();if(nm.join("|")!==H.names.join("|")){H.names=nm;showNames();await setMeta({ph:"lobby",names:nm})}}
+  if(j.ps){H.names=j.ps.map(p=>p.n).sort();showNames()}
   tmr=setTimeout(lobbyPoll,2000)}
 async function nextQ(){
-  H.i++;if(H.i>=H.qs.length)return end();
-  const q=H.qs[H.i],o=shuf(q[2].map((t,i)=>[t,i===q[3]]));H.k=o.findIndex(x=>x[1]);
-  const img=q[4]&&String(q[4]).length<1500?q[4]:"";
-  H.q={c:q[0],q:q[1],o:o.map(x=>x[0]),img};
-  const j=await setMeta({ph:"q",i:H.i,n:H.qs.length,L:H.L,c:q[0],q:q[1],o:H.q.o,img});
-  H.t0=H.meta.t0;H.answered=0;Snd.start();Snd.music("q");qView();qLoop()}
+  const j=await api("next",{pin:H.pin,hk:H.hk},true);
+  if(!j.meta){return alert("आगे नहीं बढ़ सका — फिर कोशिश करें")}
+  if(j.meta.ph==="end")return end(j.meta);
+  H.m=j.meta;H.t0=H.m.t0;Snd.start();Snd.music("q");qView();qLoop()}
 function qView(){
-  app.innerHTML=`<div class="bar"><span>${esc(H.q.c)} · प्रश्न ${H.i+1}/${H.qs.length}</span><span id="ac">उत्तर: 0/${H.names.length}</span></div><div class="t"><i id="tb"></i></div>
-  <div class="card">${pic(H.q.img)}<div class="big" style="font-size:1.5rem">${esc(H.q.q)}</div></div>
-  <div class="o">${H.q.o.map((t,i)=>`<div class="c${i}">${"▲◆●■"[i]} ${esc(t)}</div>`).join("")}</div>
+  const m=H.m;
+  app.innerHTML=`<div class="bar"><span>${esc(m.c)} · प्रश्न ${m.i+1}/${m.n}</span><span id="ac">उत्तर: 0/${H.names.length}</span></div><div class="t"><i id="tb"></i></div>
+  <div class="card">${pic(m.img)}<div class="big" style="font-size:1.5rem">${esc(m.q)}</div></div>
+  <div class="o">${m.o.map((t,i)=>`<div class="c${i}">${"▲◆●■"[i]} ${esc(t)}</div>`).join("")}</div>
   <button id="skip" style="margin-top:12px;width:100%">अभी परिणाम दिखाएँ</button>`;
   $("#skip").onclick=()=>{clearTimeout(tmr);clearInterval(tick);reveal()};
-  const tb=$("#tb");clearInterval(tick);let ls=99;tick=setInterval(()=>{const left=(H.t0+H.L*1000)-srv();tb.style.width=Math.max(0,left/(H.L*1000)*100)+"%";const s=Math.ceil(left/1000);if(s<=5&&s>0&&s!==ls){ls=s;Snd.tick()}},100)}
+  const tb=$("#tb");clearInterval(tick);let ls=99;
+  tick=setInterval(()=>{const left=(H.t0+H.L*1000)-srv();tb.style.width=Math.max(0,left/(H.L*1000)*100)+"%";const s=Math.ceil(left/1000);if(s<=5&&s>0&&s!==ls){ls=s;Snd.tick()}},100)}
 async function qLoop(){
   const j=await api("players",{pin:H.pin,hk:H.hk});
-  if(j.ps){const a=j.ps.filter(p=>p.a[H.i]!=null).length;const e=$("#ac");if(e)e.textContent=`उत्तर: ${a}/${j.ps.length}`;
+  if(j.ps){const a=j.ps.filter(p=>p.a[H.m.i]!=null).length;const e=$("#ac");if(e)e.textContent=`उत्तर: ${a}/${j.ps.length}`;
     if((j.ps.length&&a>=j.ps.length)||srv()>H.t0+H.L*1000+2000){clearInterval(tick);return reveal()}}
   tmr=setTimeout(qLoop,1200)}
 async function reveal(){
   clearTimeout(tmr);clearInterval(tick);Snd.stop();
-  const j=await api("players",{pin:H.pin,hk:H.hk});const ps=j.ps||[];
-  const L=H.L*1000;
-  const b=ps.map(p=>{const a=p.a[H.i],ok=a&&a.c===H.k;const d=ok?Math.round(1000*(1-Math.min(a.t,L)/(2*L))):0;
-    H.sc[p.pid]=(H.sc[p.pid]||0)+d;H.nm[p.pid]=p.n;return{p:p.pid,n:p.n,s:H.sc[p.pid],d,c:a?a.c:null}}).sort((x,y)=>y.s-x.s);
-  H.b=b;Snd.reveal();await setMeta({ph:"rev",i:H.i,n:H.qs.length,q:H.q.q,o:H.q.o,k:H.k,b});
-  const mx=Math.max(1,b[0]?b[0].s:1),last=H.i+1>=H.qs.length;
-  app.innerHTML=`<div class="card"><div class="big">${esc(H.q.q)}</div></div>
-  <div class="o">${H.q.o.map((t,i)=>`<div class="c${i} ${i===H.k?"good":"dim"}">${"▲◆●■"[i]} ${esc(t)}</div>`).join("")}</div>
+  const j=await api("reveal",{pin:H.pin,hk:H.hk},true);
+  if(!j.meta)return;
+  const m=j.meta,b=m.b||[];H.m=m;Snd.reveal();
+  const mx=Math.max(1,b[0]?b[0].s:1),last=m.i+1>=m.n;
+  app.innerHTML=`<div class="card"><div class="big">${esc(m.q)}</div></div>
+  <div class="o">${m.o.map((t,i)=>`<div class="c${i} ${i===m.k?"good":"dim"}">${"▲◆●■"[i]} ${esc(t)}</div>`).join("")}</div>
   <div class="card"><b>🏅 स्कोर बोर्ड</b>${b.slice(0,6).map((x,i)=>`<div style="margin:8px 0"><div class="row" style="border:0"><span>${i+1}. ${esc(x.n)}</span><span>${x.s} ${x.d?`<small class="mut">(+${x.d})</small>`:""}</span></div><div class="bb" style="width:${Math.round(x.s/mx*100)}%"></div></div>`).join("")}</div>
   <button class="p" id="nx">${last?"🏆 अंतिम परिणाम":"अगला प्रश्न →"}</button>`;
   $("#nx").onclick=nextQ}
-async function end(){
-  const b=H.b||[];Snd.stop();Snd.win();await setMeta({ph:"end",b});
+function end(m){
+  const b=m.b||[];Snd.stop();Snd.win();
   app.innerHTML=`<div class="card ctr"><div style="font-size:3.5rem">🏆</div><h2>विजेता: ${esc(b[0]?b[0].n:"-")}</h2></div>
   <div class="card">${b.slice(0,10).map((x,i)=>`<div class="row"><span>${["🥇","🥈","🥉"][i]||(i+1)+"."} ${esc(x.n)}</span><span>${x.s}</span></div>`).join("")}</div>
   <button class="p" id="nw">नया गेम (वर्तमान गेम बंद करें)</button>`;
